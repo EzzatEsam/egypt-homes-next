@@ -36,3 +36,18 @@ export function getBase64(file: File): Promise<string> {
     reader.onerror = (error) => reject(error);
   });
 }
+
+
+export function getDaysAgo(date: Date) {
+  const currentDate = new Date();
+  const timeDifference = currentDate.getTime() - new Date(date).getTime();
+  const daysDifference = Math.floor(timeDifference / (1000 * 3600 * 24));
+
+  if (daysDifference === 0) {
+    return "Listed today";
+  } else if (daysDifference === 1) {
+    return "Listed 1 day ago";
+  } else {
+    return `Listed ${daysDifference} days ago`;
+  }
+}

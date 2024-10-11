@@ -142,7 +142,7 @@ export default async function SearchBar({
           </li>
         </ul>
       </details>
-      <button className="btn btn-primary"> Search </button>
+      <button className="btn btn-primary btn-outline"> Search </button>
     </form>
   );
 }

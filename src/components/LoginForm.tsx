@@ -1,31 +1,50 @@
 "use client";
 import { useState } from "react";
 import LogoBig from "./LogoBig";
-import { loginAction } from "@/app/actions";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { IconGoogle } from "./Icons";
+import { AlertBox } from "./Alert";
 export default function LoginForm() {
   const router = useRouter();
   const [errors, setErrors] = useState<string[]>([]);
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setErrors([]);
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    const result = await loginAction(email, password);
-    if (!result.success) {
-      setErrors(result.errors ?? []);
-      return;
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setErrors([result.error]); // Handle sign-in errors from NextAuth
     } else {
-      console.log("Login success");
-      router.push("/");
+      router.push("/"); // Redirect after successful sign-in
     }
   };
+
   return (
     <div className="flex items-center justify-center mt-8   ">
       <form className="max-w-md mx-auto space-y-6 " onSubmit={handleSubmit}>
         <LogoBig />
         <div className="text-center text-xl">Sign in to your account</div>
+
+        <button
+          type="button"
+          className="btn text-white w-full bg-red-500 hover:bg-red-600  "
+          onClick={() => signIn("google", { callbackUrl: "/" })}
+        >
+          <IconGoogle fill="white" />
+          Sign in with Google
+        </button>
+        <div className="flex w-full flex-col border-opacity-50">
+          <div className="divider">OR</div>
+        </div>
         <label className="input input-bordered flex items-center gap-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -41,6 +60,7 @@ export default function LoginForm() {
             className="grow"
             placeholder="Email"
             name="email"
+            required
           />
         </label>
 
@@ -62,12 +82,11 @@ export default function LoginForm() {
             className="grow"
             placeholder="Password"
             name="password"
+            required
           />
         </label>
         {errors.map((error) => (
-          <div className="alert alert-error" key={`err-${error}`}>
-            {error}
-          </div>
+          <AlertBox key={error} message={error} />
         ))}
         <button className="btn btn-primary w-full">Sign in</button>
         <div className="text-center">

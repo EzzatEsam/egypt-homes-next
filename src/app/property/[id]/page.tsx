@@ -1,5 +1,5 @@
 "use server";
-import { FetchPropertySingle, GetUser } from "@/app/actions";
+import { FetchPropertySingle } from "@/app/actions";
 import {
   CallButton,
   DeleteButton,
@@ -20,61 +20,11 @@ import {
   IconSunPlantWilt,
   IconToilet,
 } from "@/components/Icons";
-import { HasCredentials } from "@/lib/Session";
-import {
-  PropertyCategory,
-  PropertyPost,
-  PropertyType,
-} from "@/types/propertyPost";
-import { User } from "@/types/user";
+import { getAuth } from "@/lib/auth";
+import { getDaysAgo } from "@/lib/utils";
+import { PropertyType } from "@/types/propertyPost";
+import { UserDTO } from "@/types/user";
 import { notFound } from "next/navigation";
-
-// const propertyDataTest: PropertyPost = {
-//   id: 1,
-//   title: "Luxury villa with 5 bedrooms",
-//   createdAt: new Date(),
-//   propertyType: PropertyType.Buy,
-//   price: 20000,
-//   location: {
-//     city: "6 October City",
-//     governorate: "Giza",
-//     street: "Badya Palm Hills",
-//     latitude: 30.032,
-//     longitude: 31.209,
-//   },
-//   description: `
-// Luxurious 5-Bedroom Villa with Private Pool and Scenic Views
-
-// Nestled in the prestigious Badya Palm Hills community, this exquisite 5-bedroom villa offers the perfect blend of modern comfort and serene living. Spanning 400 sqm, this property boasts elegant interiors, a spacious outdoor area, and premium amenities that cater to a luxurious lifestyle.
-
-// The villa features an expansive living room with floor-to-ceiling windows that invite an abundance of natural light, creating a warm and welcoming ambiance. The open-plan kitchen is fully equipped with high-end appliances and sleek cabinetry, perfect for culinary enthusiasts and entertaining guests.
-
-// Upstairs, you’ll find five generously sized bedrooms, including a master suite with a private balcony overlooking the lush surroundings. Each bedroom has ample closet space, while the three modern bathrooms feature sophisticated finishes and walk-in showers.
-
-// The outdoor space is designed for relaxation and entertainment. A private swimming pool sits at the heart of the backyard, surrounded by a beautifully landscaped garden. The villa also includes a spacious terrace, perfect for outdoor dining, hosting BBQs, or simply enjoying the tranquility of the area.
-
-// Additional features include:
-// - A private garage for two cars
-// - Central air conditioning
-// - A laundry room and ample storage space
-// - Proximity to community amenities like parks, schools, and shopping centers
-
-// Located in 6 October City, Giza, this property is ideal for families seeking a peaceful yet connected lifestyle. With easy access to the city center, this villa combines the charm of suburban living with the convenience of urban amenities.
-// `,
-//   contactPhone: "+201234567890",
-//   contactEmail: "info@example.com",
-//   category: PropertyCategory.Villa,
-//   numberOfBedrooms: 5,
-//   numberOfBathrooms: 3,
-//   images: [
-//     "/5-1319p1.webp",
-//     "/55949-1200.jpg",
-//     "/the-destination-front-rendering_m.webp",
-//     "/55949-1200.jpg",
-//   ],
-//   area: 400,
-//   hasGarage: true,
-// };
 
 interface PageProps {
   params: { id: string };
@@ -85,21 +35,20 @@ export default async function Page({ params, searchParams }: PageProps) {
   console.log(params);
   const id: number = Number(params.id);
   const propertyData = await FetchPropertySingle(id);
-  let user: User | null = null;
-  if (await HasCredentials()) {
-    user = await GetUser();
-  }
+  const session = await getAuth();
+  const user = session?.user as UserDTO;
 
   if (!propertyData) {
     return notFound();
   } else {
     return (
       <div className="flex flex-col container mx-auto px-4 mb-8">
-        <div className="breadcrumbs  my-6">
-          <ul>
+        {/* Breadcrumbs */}
+        <div className="breadcrumbs my-6">
+          <ul className="text-sm text-gray-500">
             <li>
               <a href="/">
-                <IconHome />
+                <IconHome className="mr-1" />
               </a>
             </li>
             <li>
@@ -249,6 +198,9 @@ export default async function Page({ params, searchParams }: PageProps) {
             {propertyData.location?.street}
           </span>
         </div>
+        <div className="text-lg text-gray-500 hidden sm:block  my-3">
+          {getDaysAgo(propertyData.createdAt)}
+        </div>
 
         <ExpandText text={propertyData.description} />
 
@@ -257,7 +209,9 @@ export default async function Page({ params, searchParams }: PageProps) {
         <div className="text-2xl mb-4">Provided by</div>
         <div className="flex items-center space-x-6">
           <img
-            src="https://via.placeholder.com/100" // Replace this with the actual image URL
+            src={
+              propertyData.user.pictureUrl ?? "https://via.placeholder.com/100"
+            } // Replace this with the actual image URL
             alt="John Doe, Property Agent" // Descriptive alt text
             className="w-24 h-24 rounded-full"
           />

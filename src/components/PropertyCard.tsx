@@ -5,7 +5,6 @@ import {
   IconBxsPhoneCall,
   IconEmail,
   IconWhatsappFill,
-  IconHeartOutlined,
   IconLocationOutline,
   IconBedQueenOutline,
   IconToilet,
@@ -14,6 +13,7 @@ import {
 } from "./Icons";
 import { PropertyPost, PropertyType } from "@/types/propertyPost";
 import { FavoriteButton } from "./ContactButtons";
+import { getDaysAgo } from "@/lib/utils";
 
 interface PropertyCardProps {
   property: PropertyPost;
@@ -27,7 +27,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
 
   return (
     <div
-      className="card card-side  shadow-xl max-w-xl m-6 border-2 cursor-pointer"
+      className="card card-side shadow-xl max-w-xl m-6 border-2 cursor-pointer transition-transform hover:scale-105 hover:shadow-2xl"
       onClick={handleCardClick}
     >
       <div className="flex flex-col w-full rounded-inherit bg-base-200">
@@ -36,88 +36,86 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           {/* Property images carousel */}
           <CustomCarousel
             images={property.images || ["/default-image.jpg"]}
-            className="rounded-l-inherit rounded-r-inherit sm:rounded-r-none"
+            className="rounded-l-inherit rounded-r-inherit sm:rounded-r-none min-w-80"
           />
 
           {/* Card Body: Property Details */}
-          <div className="card-body p-4">
-            <h2 className="text-lg">{property.category}</h2>
-            <h2 className="card-title">
+          <div className="card-body p-4 space-y-2">
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              {property.category}
+            </h2>
+            <h2 className="card-title text-2xl font-semibold text-primary">
               {property.price.toLocaleString()} EGP{" "}
               {property.propertyType === PropertyType.Rent ? "/ month" : ""}
             </h2>
-            <div> {property.title} </div>
-            <div className="divider"></div>
+            <div className="text-lg font-semibold">{property.title}</div>
+            <div className="divider my-2"></div>
 
             {/* Property Address */}
-            <div className="flex items-center">
+            <div className="flex items-center text-sm text-gray-600">
               <IconLocationOutline width={28} height={28} className="m-2" />
-              <div className="text-sm justify-start">
-                {property.location?.governorate},{property.location?.city},
+              <div>
+                {property.location?.governorate}, {property.location?.city},{" "}
                 {property.location?.street}
               </div>
             </div>
 
-            {/* Conditionally render property details (Bedrooms, Bathrooms, Area, Garage) */}
-            <div className="flex flex-row items-center justify-center">
+            {/* Property Details (Bedrooms, Bathrooms, Area, Garage) */}
+            <div className="flex flex-wrap items-center justify-start space-x-4 text-gray-700 min-w-56">
+              <div className="flex items-center">
+                <IconDimensions height={24} width={24} />
+                <div className="ml-1 font-medium">{property.area} sqm</div>
+              </div>
+
               {property.numberOfBedrooms && (
-                <>
+                <div className="flex items-center">
                   <IconBedQueenOutline height={24} width={24} />
-                  <div className="p-2 text-sm text-center">
-                    {property.numberOfBedrooms}
+                  <div className="ml-1 font-medium">
+                    {property.numberOfBedrooms} Beds
                   </div>
-                  <div className="divider divider-horizontal mx-2"></div>
-                </>
+                </div>
               )}
-
+            </div>
+            <div className="flex flex-wrap items-center justify-start space-x-4 text-gray-700">
               {property.numberOfBathrooms && (
-                <>
+                <div className="flex items-center">
                   <IconToilet height={24} width={24} />
-                  <div className="p-2 text-sm text-center">
-                    {property.numberOfBathrooms}
+                  <div className="ml-1 font-medium">
+                    {property.numberOfBathrooms} Baths
                   </div>
-                  <div className="divider divider-horizontal mx-2"></div>
-                </>
-              )}
-
-              {property.area && (
-                <>
-                  <IconDimensions height={24} width={24} />
-                  <div className="p-2 text-sm text-center">
-                    {property.area} sqm
-                  </div>
-                  <div className="divider divider-horizontal mx-2"></div>
-                </>
+                </div>
               )}
 
               {property.hasGarage && (
-                <>
+                <div className="flex items-center">
                   <IconBxsCarGarage height={24} width={24} />
-                  <div className="p-2 text-sm text-center">Has Garage</div>
-                </>
+                  <div className="ml-1 font-medium">Garage</div>
+                </div>
               )}
             </div>
           </div>
         </div>
 
         {/* Bottom Section: Action Buttons */}
-        <div className="flex flex-row mb-2 ml-4 justify-between items-center">
-          <div className="text-center ml-2 hidden sm:block">
-            Listed 2 days ago {/* Make this dynamic if needed */}
+        <div className="flex flex-row justify-between items-center py-3 px-4 bg-gray-100">
+          <div className="text-sm text-gray-500 hidden sm:block">
+            {getDaysAgo(property.createdAt)}
           </div>
-          <div className="flex flex-row space-x-2 mr-4 items-center">
+          <div className="flex space-x-3">
+            {property.contactPhone && (
+              <a
+                className="btn btn-outline btn-primary"
+                onClick={(e) => e.stopPropagation()}
+                href={"tel:" + property.contactPhone}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <IconBxsPhoneCall height={24} width={24} />
+                Call
+              </a>
+            )}
             <a
-              className="btn btn-outline"
-              onClick={(e) => e.stopPropagation()}
-              href={"tel:" + property.contactPhone}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <IconBxsPhoneCall height={24} width={24} />
-              Call
-            </a>
-            <a
-              className="btn btn-outline"
+              className="btn btn-outline btn-primary"
               onClick={(e) => e.stopPropagation()}
               href={"mailto:" + property.contactEmail}
               target="_blank"
@@ -127,7 +125,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
               Email
             </a>
             <a
-              className="btn btn-outline"
+              className="btn btn-outline btn-primary"
               onClick={(e) => e.stopPropagation()}
               href={"https://wa.me/" + property.contactPhone}
               target="_blank"

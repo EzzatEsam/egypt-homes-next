@@ -1,15 +1,9 @@
 "use server";
 
-import {
-  ClearSession,
-  HasCredentials,
-  SetSession,
-  TokenExpired,
-} from "@/lib/Session";
+import { AuthResult } from "@/types/authResult";
 import { NotAuthenticatedError } from "@/types/NotAuthenticatedError";
 import { PaginationRequest } from "@/types/PaginationRequest";
 import { PaginatedResult } from "@/types/paginationResult";
-
 import { PropertyCreateRequest } from "@/types/properttCreateRequest";
 import {
   PropertyCategory,
@@ -19,15 +13,18 @@ import {
 import { RegisterRequest } from "@/types/RegisterRequest";
 import { AspError, Result } from "@/types/Result";
 import { PropertySearchDTO as SearchRequestData } from "@/types/SearchRequest";
-import { User } from "@/types/user";
-import { cookies } from "next/headers"; // Import the cookies API
+import { UserDTO } from "@/types/user";
+import { getAuth } from "@/lib/auth";
+import { User } from "next-auth";
+import { headers } from "next/headers";
+import { error } from "console";
 
 const ServerAddr = process.env.SERVER_ADDR || "http://localhost:3000";
 
 export async function loginAction(
   email: string,
   password: string
-): Promise<Result> {
+): Promise<Result<AuthResult>> {
   try {
     const response = await fetch(`${ServerAddr}/api/auth/login`, {
       method: "POST",
@@ -39,11 +36,18 @@ export async function loginAction(
     });
 
     if (response.status === 200) {
-      const { accessToken, refreshToken, expiresAt } = await response.json();
+      const { accessToken, refreshToken, expiresAt, user } =
+        await response.json();
       const expiresAtDate = new Date(expiresAt);
       // Set the cookies
-      await SetSession(accessToken, refreshToken, expiresAtDate);
-      return { success: true };
+      // await SetSession(accessToken, refreshToken, expiresAtDate);
+      const result: AuthResult = {
+        accessToken,
+        refreshToken,
+        expiresAt: expiresAtDate,
+        user,
+      };
+      return { success: true, data: result };
     } else {
       const error = await response.text();
       return { success: false, errors: [error] };
@@ -57,14 +61,16 @@ export async function loginAction(
 
 export async function logoutAction() {
   try {
-    await ClearSession();
+    // await ClearSession();
   } catch (error) {
     console.error("Error during logout:", error);
     // Handle errors as needed
   }
 }
 
-export async function AddPropertyAction(createRequest: PropertyCreateRequest) {
+export async function AddPropertyAction(
+  createRequest: PropertyCreateRequest
+): Promise<Result> {
   const endpoint = `${ServerAddr}/api/properties`;
   // const data = obj2FormData(createRequest);
   const data = JSON.stringify(createRequest);
@@ -78,6 +84,7 @@ export async function AddPropertyAction(createRequest: PropertyCreateRequest) {
       body: data,
       cache: "no-cache",
     });
+    return response;
   } catch (error) {
     console.error("Error during property creation:", error);
     throw error;
@@ -123,19 +130,10 @@ export async function SignUpAction(request: RegisterRequest): Promise<Result> {
 export async function makeAuthenticatedRequest<T = undefined>(
   url: string,
   config?: RequestInit
-): Promise<T> {
+): Promise<Result<T>> {
   try {
-    const cookieStore = cookies();
-
-    // Try to get the access token from cookies
-    let accessToken = cookieStore.get("accessToken")?.value;
-    // if (await TokenExpired()) {
-    //   console.log("Access token expired. Attempting to refresh token...");
-    //   const result = await refreshAccessToken();
-    //   if (result) {
-    //     accessToken = result;
-    //   }
-    // }
+    const session = await getAuth();
+    const accessToken = session?.accessToken;
 
     if (!accessToken) {
       throw new Error("Failed to obtain access token");
@@ -159,21 +157,18 @@ export async function makeAuthenticatedRequest<T = undefined>(
     if (!response.ok) {
       console.error("shit happened");
       console.error(response.statusText);
-      console.error(await response.text());
-      throw new Error(
-        "Failed to fetch" +
-          "Status: " +
-          response.statusText +
-          "Result: " +
-          (await response.text())
-      );
+      const err = (await response.text()) as string;
+      return { success: false, errors: [err] };
     }
 
     if (response.status === 204) {
-      return undefined as T;
+      return { success: true };
     } else {
-      const result = response.json();
-      return result as T;
+      const result = response.json() as T;
+      return {
+        success: true,
+        data: result,
+      };
     }
   } catch (error) {
     console.error("Error making authenticated request:", error);
@@ -181,14 +176,28 @@ export async function makeAuthenticatedRequest<T = undefined>(
   }
 }
 
-export const GetUser = async (): Promise<User | null> => {
-  if (!(await HasCredentials())) {
-    return null;
-  } else {
-    console.log("Getting User");
-    const url = `${ServerAddr}/api/auth/user`;
-    const user = await makeAuthenticatedRequest<User>(url, { method: "GET" });
-    return user;
+export const TryGetUser = async (token: string): Promise<Result<UserDTO>> => {
+  console.log("Getting User");
+  const url = `${ServerAddr}/api/auth/user`;
+  try {
+    const result = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (result.ok)
+      return { success: true, data: (await result.json()) as UserDTO };
+    else {
+      return {
+        success: false,
+      };
+    }
+  } catch {
+    return {
+      success: false,
+      errors: ["Exception raised during fetch"],
+    };
   }
 };
 
@@ -200,7 +209,8 @@ export const FetchRecentProperties = async (
     endpoint += `?pageNumber=${pgRequest.pageNumber}&pageSize=${pgRequest.pageSize}`;
   }
 
-  const accessToken = await cookies().get("accessToken")?.value;
+  const session = await getAuth();
+  const accessToken = session?.accessToken;
 
   const response = await fetch(endpoint, {
     method: "GET",
@@ -209,7 +219,7 @@ export const FetchRecentProperties = async (
   });
   if (response.ok) {
     console.log("Properties fetched successfully");
-    let result = (await response.json()) as PaginatedResult<PropertyPost>;
+    const result = (await response.json()) as PaginatedResult<PropertyPost>;
     result.results = result.results.map((p) => PostProcessPropResults(p));
     return result;
   } else {
@@ -222,7 +232,8 @@ export const FetchPropertySingle = async (
   id: number
 ): Promise<PropertyPost | undefined> => {
   const endpoint = `${ServerAddr}/api/properties/${id}`;
-  const accessToken = await cookies().get("accessToken")?.value;
+  const session = await getAuth();
+  const accessToken = session?.accessToken;
   const response = await fetch(endpoint, {
     method: "GET",
     cache: "no-store",
@@ -250,7 +261,7 @@ export const FetchALlForUser = async (
   const response = await fetch(endpoint, { method: "GET", cache: "no-store" });
   if (response.ok) {
     console.log("Properties fetched successfully");
-    let result = (await response.json()) as PaginatedResult<PropertyPost>;
+    const result = (await response.json()) as PaginatedResult<PropertyPost>;
     result.results = result.results.map((p) => PostProcessPropResults(p));
     return result;
   } else {
@@ -266,13 +277,15 @@ export const FetchFavourites = async (
   if (pgRequest) {
     endpoint += `?pageNumber=${pgRequest.pageNumber}&pageSize=${pgRequest.pageSize}`;
   }
-  const response = await makeAuthenticatedRequest(endpoint, {
+  const response = await makeAuthenticatedRequest<
+    PaginatedResult<PropertyPost>
+  >(endpoint, {
     method: "GET",
     cache: "no-store",
   });
-  if (response) {
+  if (response.success) {
     console.log("Properties fetched successfully");
-    let result = response as PaginatedResult<PropertyPost>;
+    const result = response.data!;
     result.results = result.results.map((p) => PostProcessPropResults(p));
     return result;
   } else {
@@ -285,8 +298,9 @@ export const FetchSearchResults = async (
   searchReq: SearchRequestData,
   pgRequest?: PaginationRequest
 ): Promise<PaginatedResult<PropertyPost>> => {
-  let endpoint = `${ServerAddr}/api/properties/search`;
-  const accessToken = await cookies().get("accessToken")?.value;
+  const endpoint = `${ServerAddr}/api/properties/search`;
+  const session = await getAuth();
+  const accessToken = session?.accessToken;
   let filteredSearchReq = Object.fromEntries(
     Object.entries(searchReq).filter(([_, v]) => v != null)
   );
@@ -305,8 +319,7 @@ export const FetchSearchResults = async (
   });
   if (response.ok) {
     console.log("Properties fetched successfully");
-    console.log("wtf");
-    let result = (await response.json()) as PaginatedResult<PropertyPost>;
+    const result = (await response.json()) as PaginatedResult<PropertyPost>;
     result.results = result.results.map((p) => PostProcessPropResults(p));
     return result;
   } else {
@@ -317,7 +330,7 @@ export const FetchSearchResults = async (
 };
 
 function PostProcessPropResults(response: PropertyPost) {
-  let result: PropertyPost = {
+  const result: PropertyPost = {
     ...response,
     createdAt: new Date(response.createdAt),
   };
@@ -340,7 +353,7 @@ export const AddFavouriteAction = async (id: number) => {
       method: "POST",
       cache: "no-store",
     });
-    console.log("Favourite added successfully");
+    return response;
   } catch (error) {
     console.error("Error adding favourite:", error);
     throw error;
@@ -354,23 +367,61 @@ export const RemoveFavouriteAction = async (id: number) => {
       method: "DELETE",
       cache: "no-store",
     });
-    console.log("Favourite removed successfully");
+    return response;
   } catch (error) {
     console.error("Error removing favourite:", error);
     throw error;
   }
 };
 
-export const DeletePropertyAction = async (id: number) => {
+export const DeletePropertyAction = async (id: number): Promise<Result> => {
   const endpoint = `${ServerAddr}/api/properties/${id}`;
   try {
     const response = await makeAuthenticatedRequest(endpoint, {
       method: "DELETE",
       cache: "no-store",
     });
-    console.log("Property deleted successfully");
+    return response;
   } catch (error) {
     console.error("Error deleting property:", error);
     throw error;
+  }
+};
+
+export const SendGoogleToken = async (
+  token: string
+): Promise<Result<AuthResult>> => {
+  const endpoint = `${ServerAddr}/api/auth/google-signin`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ idToken: token }),
+      cache: "no-cache",
+    });
+    if (response.status === 200) {
+      const { accessToken, refreshToken, expiresAt, user } =
+        await response.json();
+      const expiresAtDate = new Date(expiresAt);
+      const result: AuthResult = {
+        accessToken,
+        refreshToken,
+        expiresAt: expiresAtDate,
+        user,
+      };
+      return { success: true, data: result };
+    } else {
+      const error = await response.text();
+      return { success: false, errors: [error] };
+    }
+  } catch (error) {
+    console.error("Error during google login:", error);
+    return {
+      success: false,
+      errors: ["An error occurred during google login"],
+    };
   }
 };

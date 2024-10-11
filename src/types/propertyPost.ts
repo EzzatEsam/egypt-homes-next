@@ -1,5 +1,5 @@
 import LocationAdress from "@/types/locationAdress";
-import { User } from "./user";
+import { UserDTO } from "./user";
 
 export interface PropertyPost {
   id: number;
@@ -8,19 +8,19 @@ export interface PropertyPost {
   price: number;
   location: LocationAdress;
   propertyType?: PropertyType;
-  contactPhone: string;
+  contactPhone?: string;
   contactEmail?: string;
   category?: PropertyCategory;
   numberOfBedrooms?: number;
   numberOfBathrooms?: number;
   images?: string[];
-  area?: number;
+  area: number;
   hasGarage?: boolean;
   hasSwimmingPool?: boolean;
   hasGarden?: boolean;
   hasAirConditioning?: boolean;
   createdAt: Date;
-  user: User;
+  user: UserDTO;
   isFavorited?: boolean;
 }
 

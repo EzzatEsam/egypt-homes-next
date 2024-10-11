@@ -5,6 +5,9 @@ import { SignUpAction } from "@/app/actions";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { IconGoogle } from "./Icons";
+import { AlertBox } from "./Alert";
 
 export default function SignUpForm() {
   const { register, watch } = useForm();
@@ -35,6 +38,17 @@ export default function SignUpForm() {
       <form className="max-w-md mx-auto space-y-4 " onSubmit={onFormSubmit}>
         <LogoBig />
         <div className="text-center text-xl">Create new account</div>
+        <button
+          type="button"
+          className="btn text-white w-full bg-red-500 hover:bg-red-600  "
+          onClick={() => signIn("google", { callbackUrl: "/" })}
+        >
+          <IconGoogle fill="white" />
+          Sign up with Google
+        </button>
+        <div className="flex w-full flex-col border-opacity-50">
+          <div className="divider">OR</div>
+        </div>
         <div className="flex flex-row space-x-4">
           <label className="input input-bordered flex items-center gap-2">
             <input
@@ -144,9 +158,7 @@ export default function SignUpForm() {
           />
         </label>
         {errors.map((error) => (
-          <div className="alert alert-error" key={`err-${error}`}>
-            {error}
-          </div>
+          <AlertBox key={error} message={error}></AlertBox>
         ))}
         <button className="btn btn-primary w-full">Sign up</button>
         <div className="text-center">

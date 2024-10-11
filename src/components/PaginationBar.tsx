@@ -42,7 +42,7 @@ export function PaginationBar({
   const startFar = currentPage - 9 > 1;
   const endFar = currentPage + 9 < totalPages;
   return (
-    <div className={cn("join m-4", className)}>
+    <div className={cn("join m-4 bg-base-100  ", className)}>
       <a
         className={`join-item btn ${currentPage > 1 ? "" : "btn-disabled"}`}
         onClick={() => onChangePage(currentPage - 1)}

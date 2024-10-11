@@ -3,13 +3,11 @@
 import { AddPropertyAction } from "@/app/actions";
 import { UseMultiForm } from "@/hooks/useMultiForm";
 import { cn, getBase64 } from "@/lib/utils";
-import LocationAdress from "@/types/locationAdress";
 import { PropertyCreateRequest } from "@/types/properttCreateRequest";
 import { PropertyCategory, PropertyType } from "@/types/propertyPost";
-import { redirect } from "next/dist/server/api-utils";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
-import { set } from "react-hook-form";
+import { FormEvent, useState } from "react";
+import { AlertBox } from "./Alert";
 
 type FormData = PropertyCreateRequest;
 
@@ -35,7 +33,7 @@ const DetailsForm = ({ formData, handleChange }: FormProps) => {
             type="text"
             name="title"
             className="input input-bordered  w-full"
-            placeholder="Enter property title"
+            placeholder="Enter the title of your post"
             value={formData.title}
             onChange={(e: FormEvent<HTMLInputElement>) =>
               handleChange({ title: (e.target as HTMLInputElement).value })
@@ -124,7 +122,7 @@ const DetailsForm = ({ formData, handleChange }: FormProps) => {
             name="value"
             min={0}
             className="input input-bordered"
-            placeholder="Enter property value"
+            placeholder="Enter property price in pounds"
             value={formData.price}
             onChange={(e: FormEvent<HTMLInputElement>) =>
               handleChange({
@@ -139,7 +137,7 @@ const DetailsForm = ({ formData, handleChange }: FormProps) => {
   );
 };
 
-const ImagesForm = ({ formData, handleChange, className = "" }: FormProps) => {
+const ImagesForm = ({ className = "" }: FormProps) => {
   return (
     <div className={cn("border p-4 rounded-lg mb-4", className)}>
       <h2 className="text-xl font-semibold mb-2">Upload Images</h2>
@@ -335,7 +333,7 @@ const AdditionalInfoForm = ({ formData, handleChange }: FormProps) => {
       </div>
       <div className="form-control">
         <div className="label">
-          <span className="label-text">Area</span>
+          <span className="label-text">Area (square meters)</span>
         </div>
         <input
           type="number"
@@ -431,15 +429,32 @@ const AdditionalInfoForm = ({ formData, handleChange }: FormProps) => {
 function CreateNewForm() {
   const router = useRouter();
   const [formData, setFormData] = useState<Partial<FormData>>({});
+  const [error, setError] = useState<string | null>(null);
   const handleChange = (data: Partial<FormData>) => {
     setFormData({ ...formData, ...data });
   };
   const { current, currentIdx, next, prev } = UseMultiForm([
-    <DetailsForm formData={formData} handleChange={handleChange} />,
+    <DetailsForm
+      formData={formData}
+      handleChange={handleChange}
+      key={"detf"}
+    />,
     <></>,
-    <ContactsForm formData={formData} handleChange={handleChange} />,
-    <LocationForm formData={formData} handleChange={handleChange} />,
-    <AdditionalInfoForm formData={formData} handleChange={handleChange} />,
+    <ContactsForm
+      formData={formData}
+      handleChange={handleChange}
+      key={"conf"}
+    />,
+    <LocationForm
+      formData={formData}
+      handleChange={handleChange}
+      key={"locf"}
+    />,
+    <AdditionalInfoForm
+      formData={formData}
+      handleChange={handleChange}
+      key={"addf"}
+    />,
   ]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -459,8 +474,11 @@ function CreateNewForm() {
     console.log("Adding property");
     console.log(formData);
     try {
-      await AddPropertyAction(data2Send as PropertyCreateRequest);
-      router.push("/");
+      const result = await AddPropertyAction(
+        data2Send as PropertyCreateRequest
+      );
+      if (result.success) router.push("/");
+      else setError(result.errors![0]);
     } catch (error) {
       // alert("Error creating property");
       console.error("Error creating property", error);
@@ -493,7 +511,7 @@ function CreateNewForm() {
           className={`${currentIdx === 1 ? "" : "hidden"}`}
         />
         ,{current}
-        {/* Navigation Buttons */}
+        {error && <AlertBox message={error} />}
         <div className="flex justify-between w-full">
           {currentIdx > 0 && (
             <button type="button" onClick={prev} className="btn btn-neutral">
@@ -501,16 +519,13 @@ function CreateNewForm() {
             </button>
           )}
           <div className="flex-grow"></div>{" "}
-          {/* This pushes the "Next" button to the right */}
-          {
-            <button
-              className={`btn ${
-                currentIdx === 4 ? "btn-primary" : "btn-neutral"
-              }`}
-            >
-              {currentIdx === 4 ? "Submit" : "Next"}
-            </button>
-          }
+          <button
+            className={`btn ${
+              currentIdx === 4 ? "btn-primary" : "btn-neutral"
+            }`}
+          >
+            {currentIdx === 4 ? "Submit" : "Next"}
+          </button>
         </div>
       </form>
     </div>

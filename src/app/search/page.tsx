@@ -10,7 +10,7 @@ interface PageProps {
   searchParams: { [key: string]: string | undefined };
 }
 export default async function SearchPage({ searchParams }: PageProps) {
-  let searchParamsTyped: PropertySearchDTO = searchParams;
+  const searchParamsTyped: PropertySearchDTO = searchParams;
   const searchRequest: PropertySearchDTO = {
     city: searchParamsTyped.city ?? undefined,
     governorate: searchParamsTyped.governorate ?? undefined,

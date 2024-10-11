@@ -1,8 +1,8 @@
 import { PaginationRequest } from "@/types/PaginationRequest";
 import { FetchFavourites } from "../actions";
 import PropertiesList from "@/components/PropertiesList";
-import { HasCredentials, TokenExpired } from "@/lib/Session";
 import { redirect } from "next/navigation";
+import { getAuth } from "@/lib/auth";
 
 interface PageProps {
   params: { id: string };
@@ -10,7 +10,8 @@ interface PageProps {
 }
 
 export default async function Page({ params, searchParams }: PageProps) {
-  if (!(await HasCredentials()) || (await TokenExpired())) {
+  const session = await getAuth();
+  if (! session) {
     redirect("/login");
   }
   const pgRequest: PaginationRequest = {

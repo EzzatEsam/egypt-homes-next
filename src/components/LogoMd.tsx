@@ -1,5 +1,3 @@
 export default function LogoMd() {
-  return (
-    <span className="inline-block align-middle text-2xl">Egypt Homes</span>
-  );
+  return <span className="block align-middle text-2xl">Egypt Homes</span>;
 }

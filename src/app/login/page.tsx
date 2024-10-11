@@ -1,16 +1,17 @@
 import LoginForm from "@/components/LoginForm";
-import { HasCredentials } from "@/lib/Session";
+import { getAuth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 async function SignUpPage() {
-  if (await HasCredentials()) {
+  const session = await getAuth();
+  if (session) {
     redirect("/");
-  } else
-    return (
-      <>
-        <LoginForm />
-      </>
-    );
+  }
+  return (
+    <>
+      <LoginForm />
+    </>
+  );
 }
 
 export default SignUpPage;

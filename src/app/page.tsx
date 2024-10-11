@@ -1,11 +1,4 @@
-import PropertyCard from "@/components/PropertyCard";
-import {
-  PropertyCategory,
-  PropertyPost,
-  PropertyType,
-} from "@/types/propertyPost";
 import { FetchRecentProperties } from "./actions";
-import { PaginationBar } from "@/components/PaginationBar";
 import SearchBar from "@/components/SearchBar";
 import PropertiesList from "@/components/PropertiesList";
 import { PaginationRequest } from "@/types/PaginationRequest";
