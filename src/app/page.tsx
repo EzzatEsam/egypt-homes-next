@@ -43,7 +43,9 @@ export default async function Home({
   return (
     <>
       <SearchBar className="mt-1"></SearchBar>
-      <h1 className="text-4xl font-bold w-full text-center mt-8">Recent</h1>
+      <h1 className="text-4xl font-bold w-full text-center mt-8">
+        Recent ({result.totalResults})
+      </h1>
       <PropertiesList result={result} />;
     </>
   );
